@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Inertia Game</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+    <div class="app-container">
+        <h1>Inertia Puzzle</h1>
+
+        <div class="game-layout">
+            <!-- Game Board -->
+            <div id="gameContainer" class="game-container">
+                <!-- Grid items will be added here by JS -->
+                <div id="player" class="player"></div>
+
+                <div id="overlay" class="overlay">
+                    <h2 id="msg">Game Over</h2>
+                    <button onclick="undoMove()">Undo</button>
+                    <button onclick="startNewGame()">New Game</button>
+                </div>
+            </div>
+
+            <!-- Side Panel -->
+            <div class="panel">
+                <div class="info-box">
+                    <div>Gems: <span id="gemsDisplay">0</span></div>
+                    <div>Moves: <span id="movesDisplay">0</span></div>
+                </div>
+                <button onclick="startNewGame()">New Game</button>
+                <button onclick="undoMove()">Undo Move</button>
+                <button onclick="solveGame()" id="solveBtn">Auto Solve</button>
+
+                <div style="margin-top: 20px; font-size: 0.9rem; color: #aaa;">
+                    Use Arrow Keys to Move. <br>
+                    Collect all Blue Gems. <br>
+                    Avoid Red Mines.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+
+</html>
