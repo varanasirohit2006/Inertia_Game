@@ -8,7 +8,6 @@
 </head>
 
 <body>
-
     <div class="app-container">
         <h1>Inertia Puzzle</h1>
 
@@ -33,10 +32,12 @@
                 </div>
                 <button onclick="startNewGame()">New Game</button>
                 <button onclick="undoMove()">Undo Move</button>
-                <button onclick="solveGame()" id="solveBtn">Auto Solve</button>
+                <button onclick="solveGame()" id="solveBtn">BFS Solve</button>
+                <button onclick="solveGameDFS()" id="solveDfsBtn">DFS Solve</button>
+                <button onclick="solveGameSorted()" id="solveSortedBtn">Sorted Solve</button>
 
                 <div style="margin-top: 20px; font-size: 0.9rem; color: #aaa;">
-                    Use Arrow Keys to Move. <br>
+                    Use Keys 1-9 to Move. <br>
                     Collect all Blue Gems. <br>
                     Avoid Red Mines.
                 </div>
@@ -45,6 +46,7 @@
     </div>
 
     <script src="script.js"></script>
+    <script src="solvers.js"></script>
 </body>
 
 </html>
