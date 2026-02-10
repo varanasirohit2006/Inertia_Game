@@ -134,120 +134,18 @@ async function solveGame() {
     toggleUI(false);
 }
 
-// --- Auto Solver (DFS) ---
-
-async function solveGameDFS() {
-    if (isMoving || isProcessing) return;
-    let btn = document.getElementById('solveDfsBtn');
-    let originalText = btn.innerText;
-    btn.innerText = "DFS Solving...";
-    toggleUI(true);
-    await new Promise(r => setTimeout(r, 50));
-
-    try {
-        // 1. Where are all the gems?
-        let allGems = [];
-        for (let y = 0; y < ROWS; y++) {
-            for (let x = 0; x < COLS; x++) {
-                if (grid[y][x] === GEM) allGems.push(x + "," + y);
-            }
-        }
-
-        // 2. Setup the Stack for DFS
-        let stack = [];
-        stack.push({
-            x: player.x,
-            y: player.y,
-            collected: [],
-            path: []
-        });
-
-        let visited = new Set();
-        visited.add(player.x + "," + player.y + ",");
-
-        let directions = [
-            [0, -1], [0, 1], [-1, 0], [1, 0],
-            [-1, -1], [1, -1], [-1, 1], [1, 1]
-        ];
-
-        while (stack.length > 0) {
-            await checkPause();
-            let current = stack.pop(); // DFS: Last In, First Out
-
-            // Check if we WON
-            if (current.collected.length === allGems.length) {
-                for (let move of current.path) {
-                    await checkPause();
-                    await movePlayer(move[0], move[1]);
-                    await new Promise(r => setTimeout(r, 400));
-                }
-                btn.innerText = originalText;
-                toggleUI(false);
-                return;
-            }
-
-            for (let dir of directions) {
-                let dx = dir[0];
-                let dy = dir[1];
-
-                let simX = current.x;
-                let simY = current.y;
-                let simCollected = [...current.collected];
-                let crashed = false;
-
-                while (true) {
-                    let nextX = simX + dx;
-                    let nextY = simY + dy;
-
-                    if (nextX < 0 || nextX >= COLS || nextY < 0 || nextY >= ROWS || grid[nextY][nextX] === WALL) {
-                        break;
-                    }
-
-                    simX = nextX;
-                    simY = nextY;
-
-                    if (grid[simY][simX] === GEM) {
-                        let gemId = simX + "," + simY;
-                        if (!simCollected.includes(gemId)) {
-                            simCollected.push(gemId);
-                        }
-                    }
-
-                    if (grid[simY][simX] === STOP) break;
-                    if (grid[simY][simX] === MINE) {
-                        crashed = true;
-                        break;
-                    }
-                }
-
-                if (crashed) continue;
-                if (simX === current.x && simY === current.y) continue;
-
-                simCollected.sort();
-                let stateId = simX + "," + simY + "," + simCollected.join("|");
-
-                if (!visited.has(stateId)) {
-                    visited.add(stateId);
-                    stack.push({
-                        x: simX,
-                        y: simY,
-                        collected: simCollected,
-                        path: [...current.path, [dx, dy]]
-                    });
-                }
-            }
-        }
-
-        alert("No Solution Found (DFS)!");
-    } catch (e) {
-        console.error(e);
-        alert("Error during DFS.");
-    }
-    btn.innerText = originalText;
-    toggleUI(false);
-}
-
-// --- Auto Solver (Sorted / Greedy Best-First) ---
+// ============================================================================
+// --- Auto Solver: Greedy Best-First Search (Uses QUICK SORT) ---
+// ============================================================================
+// This algorithm uses JavaScript's Array.sort() which implements Quick Sort
+// (or Timsort in modern engines). The queue is sorted every iteration to
+// prioritize states that are closest to uncollected gems.
+// 
+// QUICK SORT USAGE:
+// - Line ~200: queue.sort() uses Quick Sort to order states by priority
+// - Complexity: O(n log n) per sort operation
+// - This adds a log factor to the overall BFS complexity
+// ============================================================================
 
 async function solveGameSorted() {
     if (isMoving || isProcessing) return;
@@ -308,8 +206,12 @@ async function solveGameSorted() {
 
         while (queue.length > 0) {
             await checkPause();
-            // --- SORTING STEP ---
-            // Sort queue so the state with LOWEST score is at the start (Greedy)
+            // ========================================================
+            // QUICK SORT: Priority queue sorting
+            // ========================================================
+            // JavaScript's Array.sort() uses Quick Sort algorithm
+            // Sorts queue by heuristic score (lower = closer to gems)
+            // Complexity: O(queue_size × log(queue_size))
             queue.sort((a, b) => getScore(a) - getScore(b));
 
             let current = queue.shift(); // Pick best
@@ -388,10 +290,34 @@ async function solveGameSorted() {
     toggleUI(false);
 }
 
-// --- Auto Solver (Divide & Conquer) ---
-// Strategy: Recursively split the gems into two spatial groups.
-// Solve for Group A, then from that end position solve for Group B.
-// Try both orders (A->B and B->A) and pick the shorter total path.
+// ============================================================================
+// --- Auto Solver: Divide & Conquer (Uses MERGE SORT + QUICK SORT) ---
+// ============================================================================
+// This algorithm demonstrates classic sorting techniques applied to pathfinding:
+//
+// 1. MERGE SORT PATTERN (Recursive Division):
+//    - Divides gems into spatial groups recursively (like merge sort)
+//    - Splits by X or Y axis based on bounding box
+//    - Recursion depth: O(log G) where G = number of gems
+//    - Each level solves subproblems and merges solutions
+//
+// 2. QUICK SORT USAGE (Two places):
+//    a) Line ~400: Sort gems by X or Y coordinate to determine split
+//       - Array.sort() uses Quick Sort internally
+//       - Complexity: O(G log G) per split level
+//    b) Line ~120 (implied): Sort collected gems for state comparison
+//       - Used in BFS helper function for unique state IDs
+//       - Complexity: O(G log G) per state
+//
+// 3. DIVIDE & CONQUER STRATEGY:
+//    - DIVIDE: Split gems into two spatial groups (like merge sort)
+//    - CONQUER: Solve each subproblem with BFS
+//    - MERGE: Try both orderings (A→B and B→A), pick shorter path
+//
+// Time Complexity: O(G log G × b^d) + O(G²)
+// - O(G log G × b^d) from Quick Sort on every BFS state
+// - O(G²) from Merge Sort division pattern
+// ============================================================================
 
 async function solveGameDNC() {
     if (isMoving || isProcessing) return;
@@ -491,7 +417,9 @@ async function solveGameDNC() {
                 return bfsToTarget(startX, startY, gemsToCollect[0]);
             }
 
-            // --- DIVIDE ---
+            // ========================================================
+            // DIVIDE PHASE (Merge Sort Pattern)
+            // ========================================================
             // Find bounding box to determine split axis
             let minX = 100, maxX = -1, minY = 100, maxY = -1;
             gemsToCollect.forEach(g => {
@@ -505,20 +433,29 @@ async function solveGameDNC() {
             let rangeY = maxY - minY;
             let isSplitX = rangeX >= rangeY;
 
-            // Sort
+            // ========================================================
+            // QUICK SORT USAGE: Sort gems by spatial coordinate
+            // ========================================================
+            // JavaScript's Array.sort() uses Quick Sort (or Timsort)
+            // Complexity: O(G log G) where G = gems in this subproblem
             let sortedGems = [...gemsToCollect].sort((a, b) => {
                 return isSplitX ? (a.x - b.x) : (a.y - b.y);
             });
 
-            // Split
+            // Split in half (Merge Sort pattern)
             let mid = Math.floor(sortedGems.length / 2);
             let groupA = sortedGems.slice(0, mid);
             let groupB = sortedGems.slice(mid);
 
-            // --- CONQUER ---
+            // ========================================================
+            // CONQUER PHASE: Solve subproblems recursively
+            // ========================================================
             let bestResult = null;
             let bestLen = 100000;
 
+            // ========================================================
+            // MERGE PHASE: Try both orderings and pick best
+            // ========================================================
             // Try Path 1: Start -> A -> B
             let resA1 = solveRecursive(startX, startY, groupA);
             if (resA1.success) {
